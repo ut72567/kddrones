@@ -24,41 +24,41 @@ export const formatINR = (amount) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
 };
 
-// --- MODIFIED NAVBAR (Menu Left | Search Center | Cart Right) ---
-export async function loadNavbar() {
+// --- MODIFIED NAVBAR (Instant Load) ---
+export function loadNavbar() {
     const nav = document.getElementById('navbar');
     
-    // 1. Render Structure IMMEDIATELY (so index.html finds #search-input)
+    // 1. Render Structure IMMEDIATELY (Do not wait for database)
     nav.innerHTML = `
         <nav class="w-full bg-black/95 backdrop-blur-md fixed top-0 z-50 border-b border-gray-800 shadow-md">
             <div class="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
                 
-                <button id="menu-toggle" class="text-white focus:outline-none p-1">
+                <button id="menu-toggle" class="text-white focus:outline-none p-2 rounded hover:bg-gray-800">
                     <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
                 </button>
 
-                <div class="flex-1 max-w-md mx-2">
+                <div class="flex-1 max-w-md mx-1">
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                             <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </div>
-                        <input type="text" id="search-input" class="block w-full py-2 pl-9 pr-3 text-sm text-white border border-gray-700 rounded-full bg-[#1a1a1a] focus:border-red-600 focus:ring-1 focus:ring-red-600 focus:outline-none transition placeholder-gray-500" placeholder="Search...">
+                        <input type="text" id="search-input" class="block w-full py-2.5 pl-10 pr-3 text-sm text-white border border-gray-700 rounded-full bg-[#1a1a1a] focus:border-red-600 focus:ring-1 focus:ring-red-600 focus:outline-none transition placeholder-gray-500 shadow-inner" placeholder="Search drones...">
                     </div>
                 </div>
 
-                <a href="cart.html" class="relative text-white hover:text-red-500 transition p-1">
+                <a href="cart.html" class="relative text-white hover:text-red-500 transition p-2 rounded hover:bg-gray-800">
                     <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                    <span id="cart-count" class="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
+                    <span id="cart-count" class="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
                 </a>
 
             </div>
 
-            <div id="mobile-menu" class="hidden bg-[#111] border-b border-gray-800 absolute w-full left-0 top-[60px] shadow-xl">
+            <div id="mobile-menu" class="hidden bg-[#111] border-b border-gray-800 absolute w-full left-0 top-[60px] shadow-xl z-40">
                 <ul class="flex flex-col font-medium" id="menu-list">
                     </ul>
             </div>
         </nav>
-        <div class="h-[64px]"></div> <div id="auth-modal" class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4">
+        <div class="h-[70px]"></div> <div id="auth-modal" class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4">
             <div class="bg-[#111] border border-gray-800 rounded-xl p-6 w-full max-w-sm relative">
                 <button onclick="document.getElementById('auth-modal').classList.add('hidden')" class="absolute top-2 right-4 text-gray-500 text-2xl">&times;</button>
                 <h2 class="text-xl font-bold mb-4 text-white">Login / Signup</h2>
@@ -85,7 +85,8 @@ export async function loadNavbar() {
                 <li><button id="logout-btn" class="w-full text-left py-3 px-4 text-red-500 hover:bg-gray-800">🚪 Logout</button></li>
             `;
             setTimeout(() => {
-                document.getElementById('logout-btn').addEventListener('click', () => {
+                const logoutBtn = document.getElementById('logout-btn');
+                if(logoutBtn) logoutBtn.addEventListener('click', () => {
                     signOut(auth).then(() => window.location.reload());
                 });
             }, 500);
@@ -95,7 +96,6 @@ export async function loadNavbar() {
                 <li><button onclick="document.getElementById('auth-modal').classList.remove('hidden')" class="w-full text-left py-3 px-4 text-green-500 hover:bg-gray-800">🔐 Login / Signup</button></li>
             `;
             
-            // Re-attach modal logic since innerHTML wiped it
              setTimeout(() => {
                 const btnLogin = document.getElementById('btn-login');
                 const btnSignup = document.getElementById('btn-signup');
@@ -117,9 +117,12 @@ export async function loadNavbar() {
         }
     });
 
-    document.getElementById('menu-toggle').addEventListener('click', () => {
-        document.getElementById('mobile-menu').classList.toggle('hidden');
-    });
+    const menuToggle = document.getElementById('menu-toggle');
+    if(menuToggle) {
+        menuToggle.addEventListener('click', () => {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        });
+    }
 
     updateCartCount();
 }
