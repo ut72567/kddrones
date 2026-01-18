@@ -30,6 +30,7 @@
         auth.onAuthStateChanged(user => {
             if(user) {
                 // 🔍 Fetch Orders Specific to User UID
+                // ⚠️ NOTE: This query requires a Firestore Index. If it fails, check console or see error below.
                 const q = query(collection(db, "orders"), where("userId", "==", user.uid), orderBy("timestamp", "desc"));
                 
                 // ⚡ Real-time Listener
@@ -58,7 +59,7 @@
                         if(o.status === "Delivered") { statusColor = "text-green-400"; statusBg = "bg-green-900/20"; }
                         if(o.status === "Cancelled") { statusColor = "text-red-500"; statusBg = "bg-red-900/20"; }
 
-                        // 📍 Timeline Logic (Visual Progress Bar)
+                        // 📍 Timeline Logic
                         let timeline = "";
                         if(o.status !== "Cancelled") {
                              timeline = `
@@ -73,7 +74,7 @@
                             timeline = `<div class="mt-4 text-red-500 font-bold text-sm bg-red-900/10 p-3 rounded text-center border border-red-900/50">⛔ ORDER CANCELLED</div>`;
                         }
 
-                        // 🚚 Shipping Info (Only if Shipped/Delivered)
+                        // 🚚 Shipping Info
                         let shippingInfo = "";
                         if((o.status === "Shipped" || o.status === "Delivered") && o.status !== "Cancelled") {
                             shippingInfo = `
@@ -117,9 +118,21 @@
                             </div>
                         </div>`;
                     });
+                }, (error) => {
+                    // ⚠️ INDEX ERROR HANDLER
+                    const list = document.getElementById('orders-list');
+                    if(error.message.includes("index")) {
+                         list.innerHTML = `
+                         <div class="p-4 bg-red-900/20 border border-red-500 rounded text-red-200">
+                            <p class="font-bold">⚠️ Database Index Missing</p>
+                            <p class="text-sm mt-2">Open the link below in your browser to fix this automatically:</p>
+                            <p class="text-xs mt-2 break-all bg-black p-2 rounded text-gray-400 select-all">${error.message}</p>
+                         </div>`;
+                    } else {
+                         list.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+                    }
                 });
             } else {
-                // Not logged in -> Redirect to home after brief delay or show message
                 document.getElementById('orders-list').innerHTML = `
                     <div class="text-center mt-10">
                         <p class="text-white">Please log in to view orders.</p>
