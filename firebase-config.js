@@ -24,32 +24,38 @@ export const formatINR = (amount) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
 };
 
-// --- NAVBAR LOGIC (Updated Menu Links) ---
+// --- NAVBAR LOGIC (Logo Left | Search Center | Cart & Menu Right) ---
 export function loadNavbar() {
     const nav = document.getElementById('navbar');
     
-    // 1. Render Navbar HTML
+    // 1. Render Structure (Logo Left - Search Center - Cart & Menu Right)
     nav.innerHTML = `
         <nav class="w-full bg-black/95 backdrop-blur-md fixed top-0 z-50 border-b border-gray-800 shadow-md">
-            <div class="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <div class="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
                 
-                <button id="menu-toggle" class="text-white focus:outline-none p-2 rounded hover:bg-gray-800">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-                </button>
+                <a href="index.html" class="flex-shrink-0">
+                    <img id="nav-logo" src="https://via.placeholder.com/40?text=KD" class="h-8 w-auto object-contain" alt="KD">
+                </a>
 
-                <div class="flex-1 max-w-md mx-1">
+                <div class="flex-1 max-w-md mx-2">
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                             <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </div>
-                        <input type="text" id="search-input" class="block w-full py-2.5 pl-10 pr-3 text-sm text-white border border-gray-700 rounded-full bg-[#1a1a1a] focus:border-red-600 focus:ring-1 focus:ring-red-600 focus:outline-none transition placeholder-gray-500 shadow-inner" placeholder="Search drones...">
+                        <input type="text" id="search-input" class="block w-full py-2 pl-9 pr-3 text-sm text-white border border-gray-700 rounded-full bg-[#1a1a1a] focus:border-red-600 focus:ring-1 focus:ring-red-600 focus:outline-none transition placeholder-gray-500 shadow-inner" placeholder="Search...">
                     </div>
                 </div>
 
-                <a href="cart.html" class="relative text-white hover:text-red-500 transition p-2 rounded hover:bg-gray-800">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                    <span id="cart-count" class="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
-                </a>
+                <div class="flex items-center gap-1">
+                    <a href="cart.html" class="relative text-white hover:text-red-500 transition p-2 rounded hover:bg-gray-800">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        <span id="cart-count" class="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
+                    </a>
+
+                    <button id="menu-toggle" class="text-white focus:outline-none p-2 rounded hover:bg-gray-800">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    </button>
+                </div>
 
             </div>
 
@@ -72,7 +78,14 @@ export function loadNavbar() {
         </div>
     `;
 
-    // 2. Logic to populate menu
+    // 2. Fetch Logo Asynchronously
+    getDoc(doc(db, "settings", "general")).then(snap => {
+        if(snap.exists() && snap.data().logo) {
+            document.getElementById('nav-logo').src = snap.data().logo;
+        }
+    });
+
+    // 3. Logic to populate menu
     const menuList = document.getElementById('menu-list');
     
     // Links that show for EVERYONE
@@ -85,7 +98,6 @@ export function loadNavbar() {
         const isUser = user && !user.isAnonymous;
         
         if(isUser) {
-            // Logged In User Menu
             menuList.innerHTML = `
                 ${commonLinks}
                 <li><a href="orders.html" class="block py-4 px-6 text-white hover:bg-gray-800 border-b border-gray-800 flex items-center gap-3">📦 My Orders</a></li>
@@ -98,7 +110,6 @@ export function loadNavbar() {
                 });
             }, 500);
         } else {
-            // Guest Menu
             menuList.innerHTML = `
                 ${commonLinks}
                 <li><button onclick="document.getElementById('auth-modal').classList.remove('hidden')" class="w-full text-left py-4 px-6 text-green-500 hover:bg-gray-800 flex items-center gap-3">🔐 Login / Signup</button></li>
@@ -125,7 +136,6 @@ export function loadNavbar() {
         }
     });
 
-    // Toggle Menu Logic
     const menuToggle = document.getElementById('menu-toggle');
     if(menuToggle) {
         menuToggle.addEventListener('click', () => {
