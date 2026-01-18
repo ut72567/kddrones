@@ -54,7 +54,6 @@
 
         loadNavbar();
 
-        // Global variable to store all products for searching
         let allProducts = [];
 
         // 1. Load Slider
@@ -77,7 +76,6 @@
             });
             sliderTrack.innerHTML = slides;
             
-            // Auto Scroll
             let index = 0;
             const total = snap.size;
             if(total > 1) {
@@ -101,17 +99,16 @@
                 return; 
             }
             
-            // Store data globally
+            // Store data globally for fast client-side filtering
             allProducts = [];
             snap.forEach(doc => {
                 allProducts.push({ id: doc.id, ...doc.data() });
             });
 
-            // Initial Render
             renderProducts(allProducts);
         }
 
-        // 3. Render Function (Used for Init & Search)
+        // 3. Render Function
         function renderProducts(productList) {
             grid.innerHTML = "";
             
@@ -125,6 +122,7 @@
 
             productList.forEach(p => {
                 const priceVal = p.price ? Number(p.price) : 0;
+                // Multi-image support check
                 const displayImage = (p.images && p.images.length > 0) ? p.images[0] : p.image;
 
                 grid.innerHTML += `
@@ -144,18 +142,25 @@
             });
         }
 
-        // 4. Search Logic (Live Filter)
+        // 4. ROBUST CASE-INSENSITIVE SEARCH LOGIC
         searchInput.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
+            // Convert user input to Lowercase and Trim spaces
+            const term = e.target.value.toLowerCase().trim();
             
-            const filtered = allProducts.filter(p => 
-                p.name.toLowerCase().includes(term) || 
-                (p.desc && p.desc.toLowerCase().includes(term))
-            );
+            const filtered = allProducts.filter(p => {
+                // Get Product Name and convert to lowercase safely
+                const pName = p.name ? p.name.toLowerCase() : "";
+                
+                // Get Description and convert to lowercase safely
+                const pDesc = p.desc ? p.desc.toLowerCase() : "";
+                
+                // CHECK: Does Name OR Description contain the search term?
+                return pName.includes(term) || pDesc.includes(term);
+            });
 
             renderProducts(filtered);
 
-            // Update result text
+            // Update result text UI
             if(term.length > 0) {
                 resultCount.classList.remove('hidden');
                 resultCount.innerText = `Found ${filtered.length} result(s)`;
@@ -164,7 +169,6 @@
             }
         });
 
-        // Run Logic
         initProducts();
 
     </script>
