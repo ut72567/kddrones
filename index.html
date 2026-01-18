@@ -43,7 +43,7 @@
     <script type="module">
         import { db, loadNavbar, collection, getDocs, formatINR } from './firebase-config.js';
 
-        // 1. Load Navbar (Now Includes Search Bar)
+        // 1. Load Navbar (IMMEDIATELY)
         loadNavbar();
 
         let allProducts = [];
@@ -81,9 +81,6 @@
         // 3. Load Products & Initialize Search Logic
         const grid = document.getElementById('product-grid');
         const resultCount = document.getElementById('result-count');
-        
-        // Grab search input FROM NAVBAR (it exists because loadNavbar ran above)
-        const searchInput = document.getElementById('search-input');
 
         async function initProducts() {
             const snap = await getDocs(collection(db, "products"));
@@ -133,24 +130,28 @@
             });
         }
 
-        // Attach Event Listener if search bar exists (it should)
-        if(searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                const term = e.target.value.toLowerCase().trim();
-                const filtered = allProducts.filter(p => {
-                    const pName = p.name ? p.name.toLowerCase() : "";
-                    const pDesc = p.desc ? p.desc.toLowerCase() : "";
-                    return pName.includes(term) || pDesc.includes(term);
+        // 4. Safe Search Listener
+        // We wait 100ms to ensure the Navbar HTML is fully in the DOM
+        setTimeout(() => {
+            const searchInput = document.getElementById('search-input');
+            if(searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const term = e.target.value.toLowerCase().trim();
+                    const filtered = allProducts.filter(p => {
+                        const pName = p.name ? p.name.toLowerCase() : "";
+                        const pDesc = p.desc ? p.desc.toLowerCase() : "";
+                        return pName.includes(term) || pDesc.includes(term);
+                    });
+                    renderProducts(filtered);
+                    if(term.length > 0) {
+                        resultCount.classList.remove('hidden');
+                        resultCount.innerText = `Found ${filtered.length} result(s)`;
+                    } else {
+                        resultCount.classList.add('hidden');
+                    }
                 });
-                renderProducts(filtered);
-                if(term.length > 0) {
-                    resultCount.classList.remove('hidden');
-                    resultCount.innerText = `Found ${filtered.length} result(s)`;
-                } else {
-                    resultCount.classList.add('hidden');
-                }
-            });
-        }
+            }
+        }, 100);
 
         initProducts();
     </script>
