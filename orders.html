@@ -18,7 +18,7 @@
                 <div class="bg-[#111] p-6 rounded-xl border border-gray-800 h-40"></div>
                 <div class="bg-[#111] p-6 rounded-xl border border-gray-800 h-40"></div>
             </div>
-            <p class="text-center text-gray-500 text-sm mt-2">Loading your orders...</p>
+            <p class="text-center text-gray-500 text-sm mt-2">Loading orders securely...</p>
         </div>
     </div>
 
@@ -27,21 +27,21 @@
         
         loadNavbar();
 
+        const list = document.getElementById('orders-list');
+
         auth.onAuthStateChanged(user => {
             if(user) {
-                // 🔍 Fetch Orders Specific to User UID
-                // ⚠️ NOTE: This query requires a Firestore Index. If it fails, check console or see error below.
+                // ✅ PRO CODE: Now that your Index is ENABLED, we can use 'orderBy' safely.
+                // This is much faster and cleaner than sorting on the phone.
                 const q = query(collection(db, "orders"), where("userId", "==", user.uid), orderBy("timestamp", "desc"));
                 
-                // ⚡ Real-time Listener
                 onSnapshot(q, (snap) => {
-                    const list = document.getElementById('orders-list');
-                    list.innerHTML = ""; // Clear skeleton loader
+                    list.innerHTML = ""; // Clear loader
                     
                     if(snap.empty) {
                         list.innerHTML = `
                         <div class="text-center py-10">
-                            <p class="text-gray-500 text-lg">You haven't placed any orders yet.</p>
+                            <p class="text-gray-500 text-lg">No orders found.</p>
                             <a href="index.html" class="inline-block mt-4 text-red-500 hover:text-white border border-red-500 px-4 py-2 rounded">Start Shopping</a>
                         </div>`;
                         return;
@@ -51,7 +51,7 @@
                         const o = doc.data();
                         const id = doc.id;
                         
-                        // 🎨 Status Colors
+                        // 🎨 Status Styling
                         let statusColor = "text-yellow-500";
                         let statusBg = "bg-yellow-900/20";
 
@@ -84,8 +84,8 @@
                             </div>`;
                         }
 
-                        // 🛒 Items List
-                        const itemsHtml = o.items.map(i => `
+                        // 🛒 Items
+                        const itemsHtml = o.items ? o.items.map(i => `
                             <div class="flex items-center gap-4 bg-black/40 p-2 rounded border border-gray-800/50">
                                 <img src="${i.image}" class="w-12 h-12 rounded object-cover border border-gray-800">
                                 <div>
@@ -93,47 +93,31 @@
                                     <p class="text-xs text-gray-500">Qty: ${i.qty || 1}</p>
                                 </div>
                             </div>
-                        `).join('');
+                        `).join('') : '';
 
                         list.innerHTML += `
                         <div class="bg-[#111] p-5 rounded-xl border border-gray-800 shadow-xl transition hover:border-gray-700">
                             <div class="flex justify-between items-start border-b border-gray-800 pb-3 mb-3">
                                 <div>
                                     <h3 class="font-bold text-lg text-white">Order #${id.slice(0,6).toUpperCase()}</h3>
-                                    <p class="text-xs text-gray-500">${o.timestamp ? new Date(o.timestamp.seconds * 1000).toDateString() : 'Just now'}</p>
+                                    <p class="text-xs text-gray-500">${o.timestamp ? new Date(o.timestamp.seconds * 1000).toDateString() : 'Date Pending'}</p>
                                 </div>
                                 <span class="${statusColor} ${statusBg} font-bold uppercase text-[10px] tracking-wider px-2 py-1 rounded">${o.status}</span>
                             </div>
 
-                            <div class="space-y-2">
-                                ${itemsHtml}
-                            </div>
-
+                            <div class="space-y-2">${itemsHtml}</div>
                             ${timeline}
                             ${shippingInfo}
 
                             <div class="mt-4 pt-3 border-t border-gray-800 flex justify-between items-center">
                                 <span class="text-sm text-gray-400">Total Amount</span>
-                                <span class="font-bold text-xl text-white">${formatINR(o.total)}</span>
+                                <span class="font-bold text-xl text-white">${formatINR(o.total || 0)}</span>
                             </div>
                         </div>`;
                     });
-                }, (error) => {
-                    // ⚠️ INDEX ERROR HANDLER
-                    const list = document.getElementById('orders-list');
-                    if(error.message.includes("index")) {
-                         list.innerHTML = `
-                         <div class="p-4 bg-red-900/20 border border-red-500 rounded text-red-200">
-                            <p class="font-bold">⚠️ Database Index Missing</p>
-                            <p class="text-sm mt-2">Open the link below in your browser to fix this automatically:</p>
-                            <p class="text-xs mt-2 break-all bg-black p-2 rounded text-gray-400 select-all">${error.message}</p>
-                         </div>`;
-                    } else {
-                         list.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
-                    }
                 });
             } else {
-                document.getElementById('orders-list').innerHTML = `
+                list.innerHTML = `
                     <div class="text-center mt-10">
                         <p class="text-white">Please log in to view orders.</p>
                         <a href="index.html" class="text-blue-500 underline mt-2 block">Go Home</a>
