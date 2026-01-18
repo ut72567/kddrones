@@ -24,11 +24,10 @@ export const formatINR = (amount) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
 };
 
-// --- MODIFIED NAVBAR (Instant Load) ---
+// --- NAVBAR (Menu Left | Search Center | Cart Right) ---
 export function loadNavbar() {
     const nav = document.getElementById('navbar');
     
-    // 1. Render Structure IMMEDIATELY (Do not wait for database)
     nav.innerHTML = `
         <nav class="w-full bg-black/95 backdrop-blur-md fixed top-0 z-50 border-b border-gray-800 shadow-md">
             <div class="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
@@ -50,7 +49,6 @@ export function loadNavbar() {
                     <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                     <span id="cart-count" class="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
                 </a>
-
             </div>
 
             <div id="mobile-menu" class="hidden bg-[#111] border-b border-gray-800 absolute w-full left-0 top-[60px] shadow-xl z-40">
@@ -72,29 +70,30 @@ export function loadNavbar() {
         </div>
     `;
 
-    // 2. Logic (Auth & Menu Items)
     const menuList = document.getElementById('menu-list');
     
+    // 🔗 MENU ITEMS (Added Categories)
     onAuthStateChanged(auth, (user) => {
         const isUser = user && !user.isAnonymous;
-        
+        let links = `
+            <li><a href="index.html" class="block py-3 px-4 text-white hover:bg-gray-800 border-b border-gray-800">🏠 Home</a></li>
+            <li><a href="categories.html" class="block py-3 px-4 text-white hover:bg-gray-800 border-b border-gray-800">📂 Categories</a></li>
+        `;
+
         if(isUser) {
-            menuList.innerHTML = `
-                <li><a href="index.html" class="block py-3 px-4 text-white hover:bg-gray-800 border-b border-gray-800">🏠 Home</a></li>
+            links += `
                 <li><a href="orders.html" class="block py-3 px-4 text-white hover:bg-gray-800 border-b border-gray-800">📦 My Orders</a></li>
                 <li><button id="logout-btn" class="w-full text-left py-3 px-4 text-red-500 hover:bg-gray-800">🚪 Logout</button></li>
             `;
+            menuList.innerHTML = links;
             setTimeout(() => {
-                const logoutBtn = document.getElementById('logout-btn');
-                if(logoutBtn) logoutBtn.addEventListener('click', () => {
+                document.getElementById('logout-btn').addEventListener('click', () => {
                     signOut(auth).then(() => window.location.reload());
                 });
             }, 500);
         } else {
-            menuList.innerHTML = `
-                <li><a href="index.html" class="block py-3 px-4 text-white hover:bg-gray-800 border-b border-gray-800">🏠 Home</a></li>
-                <li><button onclick="document.getElementById('auth-modal').classList.remove('hidden')" class="w-full text-left py-3 px-4 text-green-500 hover:bg-gray-800">🔐 Login / Signup</button></li>
-            `;
+            links += `<li><button onclick="document.getElementById('auth-modal').classList.remove('hidden')" class="w-full text-left py-3 px-4 text-green-500 hover:bg-gray-800">🔐 Login / Signup</button></li>`;
+            menuList.innerHTML = links;
             
              setTimeout(() => {
                 const btnLogin = document.getElementById('btn-login');
@@ -117,12 +116,9 @@ export function loadNavbar() {
         }
     });
 
-    const menuToggle = document.getElementById('menu-toggle');
-    if(menuToggle) {
-        menuToggle.addEventListener('click', () => {
-            document.getElementById('mobile-menu').classList.toggle('hidden');
-        });
-    }
+    document.getElementById('menu-toggle').addEventListener('click', () => {
+        document.getElementById('mobile-menu').classList.toggle('hidden');
+    });
 
     updateCartCount();
 }
