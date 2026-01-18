@@ -18,15 +18,25 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 
-// Export tools
-export { db, auth, storage, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc, query, where, onSnapshot, orderBy, serverTimestamp, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut };
+export { db, auth, storage, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, setDoc, query, where, onSnapshot, orderBy, serverTimestamp, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, ref, uploadBytes, getDownloadURL };
 
 // --- UI HELPERS ---
+
+// 💰 CURRENCY FIX: INR Formatting
+export const formatINR = (amount) => {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+};
 
 export async function loadNavbar() {
     const nav = document.getElementById('navbar');
     
-    // Auth State Check for Menu
+    // 🖼️ LOGO CONTROL: Fetch from Database
+    let logoUrl = "https://via.placeholder.com/120x40?text=KD+DRONES"; 
+    try {
+        const settingsSnap = await getDoc(doc(db, "settings", "general"));
+        if (settingsSnap.exists() && settingsSnap.data().logo) logoUrl = settingsSnap.data().logo;
+    } catch(e) { console.log("Using default logo"); }
+
     onAuthStateChanged(auth, (user) => {
         const isUser = user && !user.isAnonymous;
         const menuHTML = isUser ? 
@@ -39,7 +49,7 @@ export async function loadNavbar() {
             <nav class="w-full bg-black/90 backdrop-blur-md fixed top-0 z-50 border-b border-gray-800">
                 <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
                     <a href="index.html" class="flex items-center space-x-3 rtl:space-x-reverse">
-                        <span class="self-center text-xl font-bold whitespace-nowrap text-white tracking-tighter">KD DRONES</span>
+                        <img src="${logoUrl}" class="h-8 object-contain" alt="KD Logo">
                     </a>
                     <div class="flex items-center gap-4">
                         <a href="cart.html" class="relative text-white hover:text-red-500 transition">
@@ -74,20 +84,16 @@ export async function loadNavbar() {
             </div>
         `;
 
-        // Logic for Menu Toggle
+        // Logic for Menu and Auth
         document.getElementById('menu-toggle').addEventListener('click', () => {
             document.getElementById('mobile-menu').classList.toggle('hidden');
         });
 
-        // Logic for Logout
         if(isUser) {
             document.getElementById('logout-btn').addEventListener('click', () => {
                 signOut(auth).then(() => window.location.reload());
             });
-        }
-
-        // Logic for Login/Signup
-        if(!isUser) {
+        } else {
             document.getElementById('btn-login').addEventListener('click', async () => {
                 try {
                     await signInWithEmailAndPassword(auth, document.getElementById('auth-email').value, document.getElementById('auth-pass').value);
@@ -102,7 +108,6 @@ export async function loadNavbar() {
             });
         }
     });
-
     updateCartCount();
 }
 
