@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KD Drones | Premium Store</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { 'kd-red': '#D72638', 'kd-dark': '#0a0a0a' } } }
+        }
+    </script>
+    <style>
+        body { background-color: #050505; color: #e5e5e5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .slider-scroll::-webkit-scrollbar { display: none; }
+        .product-card { transition: transform 0.2s; }
+        .product-card:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+
+    <div id="navbar"></div>
+
+    <div class="relative w-full overflow-hidden mt-4" id="home-slider">
+        <div id="slider-track" class="flex transition-transform duration-500 ease-out h-[50vh] md:h-[600px]">
+            </div>
+        <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-2" id="slider-dots"></div>
+    </div>
+
+    <section id="products" class="max-w-screen-xl mx-auto p-4 mt-8">
+        <h2 class="text-3xl font-bold mb-6 tracking-tight">Latest Drones</h2>
+        <div id="product-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="animate-pulse bg-gray-800 h-64 rounded-xl"></div>
+            <div class="animate-pulse bg-gray-800 h-64 rounded-xl"></div>
+        </div>
+    </section>
+
+    <script type="module">
+        import { db, loadNavbar, collection, getDocs } from './firebase-config.js';
+
+        loadNavbar();
+
+        // Load Slider
+        const sliderTrack = document.getElementById('slider-track');
+        getDocs(collection(db, "slider")).then(snap => {
+            if(snap.empty) {
+                sliderTrack.innerHTML = `<div class="w-full flex-shrink-0 bg-gray-800 flex items-center justify-center h-full"><h2>No Slides Configured</h2></div>`;
+                return;
+            }
+            let slides = "";
+            snap.forEach(doc => {
+                const data = doc.data();
+                slides += `
+                <div class="w-full flex-shrink-0 relative cursor-pointer" onclick="window.location.href='${data.link || '#'}'">
+                    <img src="${data.image}" class="w-full h-full object-cover">
+                    <div class="absolute bottom-0 bg-gradient-to-t from-black to-transparent w-full p-8">
+                        <h2 class="text-2xl font-bold">${data.title || ''}</h2>
+                    </div>
+                </div>`;
+            });
+            sliderTrack.innerHTML = slides;
+            
+            // Simple Auto Scroll Logic
+            let index = 0;
+            const total = snap.size;
+            if(total > 1) {
+                setInterval(() => {
+                    index = (index + 1) % total;
+                    sliderTrack.style.transform = `translateX(-${index * 100}%)`;
+                }, 4000);
+            }
+        });
+
+        // Load Products
+        const grid = document.getElementById('product-grid');
+        getDocs(collection(db, "products")).then(snap => {
+            grid.innerHTML = "";
+            snap.forEach(doc => {
+                const p = doc.data();
+                grid.innerHTML += `
+                <div class="product-card bg-[#111] border border-gray-800 rounded-xl overflow-hidden cursor-pointer" onclick="window.location.href='product.html?id=${doc.id}'">
+                    <div class="h-40 w-full bg-gray-900 overflow-hidden relative">
+                         <img src="${p.image}" class="w-full h-full object-cover hover:scale-110 transition duration-500">
+                    </div>
+                    <div class="p-3">
+                        <h3 class="text-white font-semibold text-lg truncate">${p.name}</h3>
+                        <p class="text-gray-400 text-sm mt-1 truncate">${p.desc}</p>
+                        <div class="flex justify-between items-center mt-3">
+                            <span class="text-kd-red font-bold">$${p.price}</span>
+                            <button class="bg-white text-black text-xs px-3 py-1 rounded-full font-bold">VIEW</button>
+                        </div>
+                    </div>
+                </div>`;
+            });
+        });
+    </script>
+</body>
+</html>

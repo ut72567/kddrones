@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>body { background-color: #050505; color: #fff; }</style>
+</head>
+<body>
+    <div id="navbar"></div>
+
+    <main id="main-content" class="max-w-screen-xl mx-auto p-4 pt-8">
+        <div class="animate-pulse bg-gray-800 w-full h-96 rounded-2xl"></div>
+    </main>
+
+    <script type="module">
+        import { db, auth, loadNavbar, doc, getDoc, setDoc, collection } from './firebase-config.js';
+        
+        loadNavbar();
+        
+        const params = new URLSearchParams(window.location.search);
+        const pid = params.get('id');
+        const content = document.getElementById('main-content');
+
+        async function loadProduct() {
+            if(!pid) return;
+            const docSnap = await getDoc(doc(db, "products", pid));
+            
+            if (docSnap.exists()) {
+                const p = docSnap.data();
+                content.innerHTML = `
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-[#111] rounded-2xl p-4 flex items-center justify-center border border-gray-800">
+                        <img src="${p.image}" class="max-h-[500px] object-contain drop-shadow-2xl">
+                    </div>
+                    <div class="flex flex-col justify-center">
+                        <h1 class="text-4xl font-bold tracking-tighter mb-2">${p.name}</h1>
+                        <p class="text-3xl text-red-500 font-medium mb-6">$${p.price}</p>
+                        
+                        <div class="bg-[#111] p-4 rounded-xl border border-gray-800 mb-6">
+                            <h3 class="text-gray-400 text-sm uppercase tracking-wide mb-2">Description</h3>
+                            <p class="text-gray-200 leading-relaxed">${p.desc}</p>
+                        </div>
+
+                        <div class="bg-[#111] p-4 rounded-xl border border-gray-800 mb-8">
+                             <h3 class="text-gray-400 text-sm uppercase tracking-wide mb-2">Specs</h3>
+                             <p class="text-gray-300 font-mono text-sm whitespace-pre-line">${p.specs || 'No specs available.'}</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <button id="add-to-cart" class="py-4 rounded-xl border border-white font-bold hover:bg-white hover:text-black transition">ADD TO CART</button>
+                            <button id="buy-now" class="py-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition shadow-lg shadow-red-900/20">BUY NOW</button>
+                        </div>
+                    </div>
+                </div>`;
+
+                // Logic
+                document.getElementById('add-to-cart').onclick = async () => {
+                    const user = auth.currentUser;
+                    if(user) {
+                        await setDoc(doc(db, "carts", user.uid, "items", pid), {
+                            name: p.name,
+                            price: p.price,
+                            image: p.image,
+                            qty: 1
+                        });
+                        alert("Added to Cart");
+                        window.location.href = "index.html";
+                    }
+                };
+
+                document.getElementById('buy-now').onclick = () => {
+                    alert("Order Placed Successfully! (Demo)");
+                };
+            }
+        }
+        loadProduct();
+    </script>
+</body>
+</html>
