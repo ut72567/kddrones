@@ -9,22 +9,26 @@
 </head>
 <body class="p-4">
 
-    <div id="auth-check" class="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6 text-center">
-        <h2 class="text-xl font-bold text-white mb-2">Admin Access</h2>
-        <p id="auth-msg" class="text-gray-500 mb-6">Connecting to Firebase...</p>
+    <div id="access-check" class="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6 text-center">
+        <h2 class="text-2xl font-bold text-white mb-2">Verifying Privileges...</h2>
+        <p id="access-msg" class="text-gray-500 mb-6">Checking Firebase Session...</p>
         
-        <div id="login-form" class="hidden w-full max-w-sm">
-            <input type="email" id="admin-email" placeholder="admin@kd.com" class="w-full bg-[#111] border border-gray-700 text-white p-3 rounded mb-3">
-            <input type="password" id="admin-pass" placeholder="Password" class="w-full bg-[#111] border border-gray-700 text-white p-3 rounded mb-4">
-            <button id="do-login-btn" class="w-full bg-white text-black font-bold py-3 rounded">LOGIN</button>
-            <p id="error-log" class="text-red-500 text-sm mt-4"></p>
+        <div id="denied-box" class="hidden">
+            <div class="text-red-500 text-6xl mb-4">⛔</div>
+            <h3 class="text-xl text-white font-bold mb-2">Access Denied</h3>
+            <p class="text-gray-400 mb-6 max-w-xs mx-auto">You are not logged in as an Administrator.</p>
+            <button onclick="window.location.href='index.html'" class="bg-white text-black font-bold px-6 py-3 rounded-full hover:bg-gray-200 transition">Go Back Home</button>
+            <p class="mt-4 text-xs text-gray-600">Tip: Log in via the Main Menu first.</p>
         </div>
     </div>
 
     <div id="dashboard" class="hidden max-w-4xl mx-auto">
         <div class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
             <h1 class="text-3xl text-white font-bold">Admin Panel</h1>
-            <button onclick="window.location.href='index.html'" class="text-blue-500">View Site</button>
+            <div class="flex gap-4">
+                <button onclick="window.location.href='index.html'" class="text-blue-500">View Site</button>
+                <button id="logout-btn" class="text-red-500">Logout</button>
+            </div>
         </div>
 
         <div class="flex gap-4 mb-6">
@@ -61,69 +65,39 @@
     </div>
 
     <script type="module">
-        import { auth, db, signInWithEmailAndPassword, doc, setDoc, addDoc, updateDoc, deleteDoc, collection, onAuthStateChanged, query, orderBy, onSnapshot } 
+        import { auth, db, signOut, doc, setDoc, addDoc, updateDoc, deleteDoc, collection, onAuthStateChanged, query, orderBy, onSnapshot } 
         from './firebase-config.js';
 
-        // --- 1. ROBUST LOGIN LOGIC ---
-        const ADMIN_EMAIL = "admin@kd.com"; // MUST MATCH FIREBASE USER
-        const loginForm = document.getElementById('login-form');
-        const authMsg = document.getElementById('auth-msg');
-        const overlay = document.getElementById('auth-check');
+        const ADMIN_EMAIL = "admin@kd.com"; 
 
-        // Fallback: If Firebase is slow, show login form after 2 seconds
-        setTimeout(() => {
-            if(overlay.style.display !== 'none') {
-                authMsg.innerText = "Please Log In";
-                loginForm.classList.remove('hidden');
-            }
-        }, 2000);
+        // 1. STRICT AUTH CHECK (No Passwords)
+        const overlay = document.getElementById('access-check');
+        const deniedBox = document.getElementById('denied-box');
+        const accessMsg = document.getElementById('access-msg');
 
         onAuthStateChanged(auth, (user) => {
             if (user && user.email === ADMIN_EMAIL) {
-                // Success
+                // ✅ USER IS ADMIN -> ACCESS GRANTED
                 overlay.style.display = 'none';
                 document.getElementById('dashboard').classList.remove('hidden');
                 loadOrders();
-            } else if (user) {
-                // Wrong User
-                authMsg.innerText = "Access Denied: " + user.email;
-                authMsg.classList.add("text-red-500");
-                loginForm.classList.remove('hidden');
             } else {
-                // No User
-                authMsg.innerText = "Admin Login Required";
-                loginForm.classList.remove('hidden');
+                // ❌ NOT ADMIN or NOT LOGGED IN -> ACCESS DENIED
+                accessMsg.style.display = 'none';
+                deniedBox.classList.remove('hidden');
             }
         });
 
-        // Login Button Action
-        document.getElementById('do-login-btn').addEventListener('click', async () => {
-            const e = document.getElementById('admin-email').value;
-            const p = document.getElementById('admin-pass').value;
-            const btn = document.getElementById('do-login-btn');
-            const errLog = document.getElementById('error-log');
-
-            btn.innerText = "Verifying...";
-            errLog.innerText = "";
-
-            try {
-                await signInWithEmailAndPassword(auth, e, p);
-                // onAuthStateChanged will handle the rest
-            } catch (error) {
-                btn.innerText = "LOGIN";
-                errLog.innerText = error.message;
-            }
+        document.getElementById('logout-btn').addEventListener('click', () => {
+             signOut(auth).then(() => window.location.href='index.html');
         });
 
-        // --- 2. ADMIN FUNCTIONS ---
-
-        // Tab Switching
+        // 2. ADMIN FUNCTIONS (Same as before)
         window.showTab = (tabName) => {
             document.getElementById('tab-orders').style.display = tabName === 'orders' ? 'block' : 'none';
             document.getElementById('tab-products').style.display = tabName === 'products' ? 'block' : 'none';
         };
 
-        // Add Product
         window.addProduct = async () => {
             try {
                 await addDoc(collection(db, "products"), {
@@ -135,10 +109,9 @@
                     createdAt: new Date()
                 });
                 alert("Product Added!");
-            } catch(e) { alert("Error: " + e.message); }
+            } catch(e) { alert(e.message); }
         };
 
-        // Load Orders
         function loadOrders() {
             const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snap) => {
@@ -156,7 +129,7 @@
                         </div>
                         <p class="text-sm text-gray-400">User ID: ${o.userId}</p>
                         <p class="text-sm text-gray-400 mb-2">Address: ${o.address}</p>
-                        <p class="text-sm text-gray-400 mb-2">Payment: ${o.paymentMethod} | Total: $${o.total}</p>
+                        <p class="text-sm text-gray-400 mb-2">Total: $${o.total} | Pay: ${o.paymentMethod}</p>
                         
                         <div class="flex gap-2 mt-3 flex-wrap">
                             <button onclick="updateStatus('${d.id}', 'Confirmed')" class="px-3 py-1 bg-green-900 text-green-200 text-xs rounded">Confirm</button>
@@ -169,12 +142,10 @@
             });
         }
 
-        // Order Actions
         window.updateStatus = async (id, status) => {
             await updateDoc(doc(db, "orders", id), { status: status });
         };
 
-        // Shipping Logic
         let currentOrderId = null;
         window.openShipModal = (id) => {
             currentOrderId = id;
@@ -196,7 +167,6 @@
             }
         });
 
-        // Cancel Logic
         window.cancelOrder = async (id) => {
             if(confirm("Cancel this order?")) {
                 await updateDoc(doc(db, "orders", id), { 
