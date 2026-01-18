@@ -9,11 +9,15 @@
 </head>
 <body class="p-4">
 
-    <div id="auth-check" class="fixed inset-0 bg-black z-50 flex items-center justify-center">
-        <div class="text-center">
-            <h2 class="text-xl font-bold text-white mb-2">Verifying Admin Access...</h2>
-            <p id="auth-msg" class="text-gray-500">Please wait.</p>
-            <button id="admin-login-btn" class="hidden mt-4 bg-white text-black px-4 py-2 rounded font-bold">Login as Admin</button>
+    <div id="auth-check" class="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6 text-center">
+        <h2 class="text-xl font-bold text-white mb-2">Admin Access</h2>
+        <p id="auth-msg" class="text-gray-500 mb-6">Connecting to Firebase...</p>
+        
+        <div id="login-form" class="hidden w-full max-w-sm">
+            <input type="email" id="admin-email" placeholder="admin@kd.com" class="w-full bg-[#111] border border-gray-700 text-white p-3 rounded mb-3">
+            <input type="password" id="admin-pass" placeholder="Password" class="w-full bg-[#111] border border-gray-700 text-white p-3 rounded mb-4">
+            <button id="do-login-btn" class="w-full bg-white text-black font-bold py-3 rounded">LOGIN</button>
+            <p id="error-log" class="text-red-500 text-sm mt-4"></p>
         </div>
     </div>
 
@@ -30,7 +34,7 @@
 
         <div id="tab-orders" class="block">
             <h2 class="text-2xl font-bold text-white mb-4">Manage Orders</h2>
-            <div id="admin-orders-list" class="space-y-4">Loading...</div>
+            <div id="admin-orders-list" class="space-y-4">Loading orders...</div>
         </div>
 
         <div id="tab-products" class="hidden">
@@ -49,7 +53,7 @@
     <div id="ship-modal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-[#111] p-6 rounded-xl border border-gray-800 w-full max-w-sm">
             <h3 class="text-xl font-bold text-white mb-4">Ship Order</h3>
-            <input id="ship-partner" class="w-full bg-black border border-gray-700 p-2 mb-3 rounded text-white" placeholder="Delivery Partner Name">
+            <input id="ship-partner" class="w-full bg-black border border-gray-700 p-2 mb-3 rounded text-white" placeholder="Delivery Partner">
             <input id="ship-track" class="w-full bg-black border border-gray-700 p-2 mb-4 rounded text-white" placeholder="Tracking ID">
             <button id="confirm-ship-btn" class="w-full bg-blue-600 text-white font-bold py-2 rounded">CONFIRM SHIPMENT</button>
             <button onclick="document.getElementById('ship-modal').classList.add('hidden')" class="w-full mt-2 text-gray-500 py-2">Cancel</button>
@@ -57,64 +61,103 @@
     </div>
 
     <script type="module">
-        import { auth, db, signInWithEmailAndPassword, doc, setDoc, addDoc, updateDoc, collection, onAuthStateChanged, query, orderBy, onSnapshot } from './firebase-config.js';
+        import { auth, db, signInWithEmailAndPassword, doc, setDoc, addDoc, updateDoc, deleteDoc, collection, onAuthStateChanged, query, orderBy, onSnapshot } 
+        from './firebase-config.js';
 
-        // 1. ADMIN AUTH CHECK (NO PASSWORD)
-        const ADMIN_EMAIL = "admin@kd.com"; // HARDCODED ADMIN EMAIL CHECK
+        // --- 1. ROBUST LOGIN LOGIC ---
+        const ADMIN_EMAIL = "admin@kd.com"; // MUST MATCH FIREBASE USER
+        const loginForm = document.getElementById('login-form');
+        const authMsg = document.getElementById('auth-msg');
+        const overlay = document.getElementById('auth-check');
 
-        onAuthStateChanged(auth, user => {
-            const overlay = document.getElementById('auth-check');
-            const msg = document.getElementById('auth-msg');
-            const loginBtn = document.getElementById('admin-login-btn');
+        // Fallback: If Firebase is slow, show login form after 2 seconds
+        setTimeout(() => {
+            if(overlay.style.display !== 'none') {
+                authMsg.innerText = "Please Log In";
+                loginForm.classList.remove('hidden');
+            }
+        }, 2000);
 
-            if(user && user.email === ADMIN_EMAIL) {
-                // SUCCESS: Is Admin
+        onAuthStateChanged(auth, (user) => {
+            if (user && user.email === ADMIN_EMAIL) {
+                // Success
                 overlay.style.display = 'none';
                 document.getElementById('dashboard').classList.remove('hidden');
                 loadOrders();
             } else if (user) {
-                // Logged in but NOT Admin
-                msg.innerText = "Access Denied. You are not an Admin.";
-                loginBtn.classList.remove('hidden');
-                loginBtn.innerText = "Switch Account";
-                loginBtn.onclick = () => { auth.signOut(); location.reload(); };
+                // Wrong User
+                authMsg.innerText = "Access Denied: " + user.email;
+                authMsg.classList.add("text-red-500");
+                loginForm.classList.remove('hidden');
             } else {
-                // Not logged in
-                msg.innerText = "Admin Login Required";
-                loginBtn.classList.remove('hidden');
-                loginBtn.onclick = async () => {
-                    const e = prompt("Email:");
-                    const p = prompt("Password:");
-                    try { await signInWithEmailAndPassword(auth, e, p); } 
-                    catch(err) { alert(err.message); }
-                };
+                // No User
+                authMsg.innerText = "Admin Login Required";
+                loginForm.classList.remove('hidden');
             }
         });
 
-        // 2. TAB SWITCHING
+        // Login Button Action
+        document.getElementById('do-login-btn').addEventListener('click', async () => {
+            const e = document.getElementById('admin-email').value;
+            const p = document.getElementById('admin-pass').value;
+            const btn = document.getElementById('do-login-btn');
+            const errLog = document.getElementById('error-log');
+
+            btn.innerText = "Verifying...";
+            errLog.innerText = "";
+
+            try {
+                await signInWithEmailAndPassword(auth, e, p);
+                // onAuthStateChanged will handle the rest
+            } catch (error) {
+                btn.innerText = "LOGIN";
+                errLog.innerText = error.message;
+            }
+        });
+
+        // --- 2. ADMIN FUNCTIONS ---
+
+        // Tab Switching
         window.showTab = (tabName) => {
             document.getElementById('tab-orders').style.display = tabName === 'orders' ? 'block' : 'none';
             document.getElementById('tab-products').style.display = tabName === 'products' ? 'block' : 'none';
         };
 
-        // 3. ORDER MANAGEMENT
-        let currentOrderId = null;
+        // Add Product
+        window.addProduct = async () => {
+            try {
+                await addDoc(collection(db, "products"), {
+                    name: document.getElementById('p-name').value,
+                    price: Number(document.getElementById('p-price').value),
+                    image: document.getElementById('p-image').value,
+                    desc: document.getElementById('p-desc').value,
+                    specs: document.getElementById('p-specs').value,
+                    createdAt: new Date()
+                });
+                alert("Product Added!");
+            } catch(e) { alert("Error: " + e.message); }
+        };
 
+        // Load Orders
         function loadOrders() {
             const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snap) => {
                 const list = document.getElementById('admin-orders-list');
                 list.innerHTML = "";
+                if(snap.empty) { list.innerHTML = "No orders found."; return; }
+
                 snap.forEach(d => {
                     const o = d.data();
                     list.innerHTML += `
                     <div class="bg-[#151515] p-4 rounded border border-gray-800 mb-4">
                         <div class="flex justify-between mb-2">
                             <span class="font-bold text-white">Order #${d.id.slice(0,6)}</span>
-                            <span class="text-sm font-mono">${o.status}</span>
+                            <span class="text-${o.status === 'Cancelled' ? 'red' : 'green'}-500 font-bold text-sm uppercase">${o.status}</span>
                         </div>
-                        <p class="text-sm text-gray-400 mb-2">User: ${o.userId}</p>
+                        <p class="text-sm text-gray-400">User ID: ${o.userId}</p>
                         <p class="text-sm text-gray-400 mb-2">Address: ${o.address}</p>
+                        <p class="text-sm text-gray-400 mb-2">Payment: ${o.paymentMethod} | Total: $${o.total}</p>
+                        
                         <div class="flex gap-2 mt-3 flex-wrap">
                             <button onclick="updateStatus('${d.id}', 'Confirmed')" class="px-3 py-1 bg-green-900 text-green-200 text-xs rounded">Confirm</button>
                             <button onclick="openShipModal('${d.id}')" class="px-3 py-1 bg-blue-900 text-blue-200 text-xs rounded">Mark Shipped</button>
@@ -126,11 +169,13 @@
             });
         }
 
-        // Global functions for HTML buttons
+        // Order Actions
         window.updateStatus = async (id, status) => {
             await updateDoc(doc(db, "orders", id), { status: status });
         };
 
+        // Shipping Logic
+        let currentOrderId = null;
         window.openShipModal = (id) => {
             currentOrderId = id;
             document.getElementById('ship-modal').classList.remove('hidden');
@@ -139,7 +184,6 @@
         document.getElementById('confirm-ship-btn').addEventListener('click', async () => {
             const partner = document.getElementById('ship-partner').value;
             const track = document.getElementById('ship-track').value;
-            
             if(currentOrderId && partner && track) {
                 await updateDoc(doc(db, "orders", currentOrderId), {
                     status: "Shipped",
@@ -147,35 +191,20 @@
                     trackingId: track
                 });
                 document.getElementById('ship-modal').classList.add('hidden');
-                alert("Order Shipped!");
             } else {
-                alert("Please fill all fields");
+                alert("Please fill all details");
             }
         });
 
+        // Cancel Logic
         window.cancelOrder = async (id) => {
-            if(confirm("Are you sure you want to Cancel this order?")) {
-                // Updates status to Cancelled AND removes shipping info (sets to null/delete)
+            if(confirm("Cancel this order?")) {
                 await updateDoc(doc(db, "orders", id), { 
                     status: "Cancelled",
-                    deliveryPartner: request.delete(), // Or just null/empty string
+                    deliveryPartner: "", 
                     trackingId: "" 
                 });
             }
-        };
-        
-        // Product Function (Kept from before)
-        window.addProduct = async () => {
-             await addDoc(collection(db, "products"), {
-                name: document.getElementById('p-name').value,
-                price: Number(document.getElementById('p-price').value),
-                image: document.getElementById('p-image').value,
-                desc: document.getElementById('p-desc').value,
-                specs: document.getElementById('p-specs').value,
-                createdAt: new Date()
-            });
-            alert("Product Added!");
-            location.reload();
         };
     </script>
 </body>
