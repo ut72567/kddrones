@@ -9,39 +9,11 @@
 </head>
 <body class="p-4">
 
-    <div id="access-check" class="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6 text-center">
-        
-        <div id="loading-state">
-            <h2 class="text-2xl font-bold text-white mb-2 animate-pulse">Verifying Access...</h2>
-            <p class="text-gray-500">Checking your session...</p>
-        </div>
-
-        <div id="denied-state" class="hidden">
-            <div class="text-red-500 text-6xl mb-4">⛔</div>
-            <h3 class="text-xl text-white font-bold mb-2">Access Denied</h3>
-            <p class="text-gray-400 mb-6 max-w-xs mx-auto">You are not logged in as Admin.</p>
-            
-            <div class="bg-[#111] p-4 rounded border border-gray-800 mb-6">
-                <p class="text-sm text-yellow-500 font-bold mb-2">HOW TO FIX:</p>
-                <ol class="text-left text-sm text-gray-400 space-y-2 list-decimal pl-4">
-                    <li>Go to the <b class="text-white">Home Page</b>.</li>
-                    <li>Click the <b>Menu Button</b> -> <b>Login</b>.</li>
-                    <li>Login with: <b class="text-white">admin@kd.com</b></li>
-                    <li>Come back here.</li>
-                </ol>
-            </div>
-
-            <button onclick="window.location.href='index.html'" class="w-full bg-white text-black font-bold py-3 rounded hover:bg-gray-200 transition">GO TO HOME PAGE</button>
-        </div>
-
-    </div>
-
-    <div id="dashboard" class="hidden max-w-4xl mx-auto">
+    <div id="dashboard" class="max-w-4xl mx-auto">
         <div class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
             <h1 class="text-3xl text-white font-bold">Admin Panel</h1>
             <div class="flex gap-4">
                 <button onclick="window.location.href='index.html'" class="text-blue-500">View Site</button>
-                <button id="logout-btn" class="text-red-500">Logout</button>
             </div>
         </div>
 
@@ -52,7 +24,9 @@
 
         <div id="tab-orders" class="block">
             <h2 class="text-2xl font-bold text-white mb-4">Manage Orders</h2>
-            <div id="admin-orders-list" class="space-y-4">Loading orders...</div>
+            <div id="admin-orders-list" class="space-y-4">
+                <p class="animate-pulse">Loading orders...</p>
+            </div>
         </div>
 
         <div id="tab-products" class="hidden">
@@ -79,47 +53,12 @@
     </div>
 
     <script type="module">
-        import { auth, db, signOut, doc, setDoc, addDoc, updateDoc, deleteDoc, collection, onAuthStateChanged, query, orderBy, onSnapshot } 
-        from './firebase-config.js';
+        import { db, doc, updateDoc, addDoc, collection, query, orderBy, onSnapshot } from './firebase-config.js';
 
-        const ADMIN_EMAIL = "admin@kd.com"; 
+        // 1. DIRECT LOAD - NO AUTH CHECK
+        loadOrders(); 
 
-        // 1. TIMEOUT FAILSAFE (Prevents being stuck on "Checking...")
-        const loadingState = document.getElementById('loading-state');
-        const deniedState = document.getElementById('denied-state');
-        const overlay = document.getElementById('access-check');
-        
-        let isVerified = false;
-
-        // Force "Access Denied" if Firebase doesn't respond in 4 seconds
-        setTimeout(() => {
-            if (!isVerified) {
-                loadingState.style.display = 'none';
-                deniedState.classList.remove('hidden');
-            }
-        }, 4000);
-
-        // 2. AUTH CHECK
-        onAuthStateChanged(auth, (user) => {
-            isVerified = true; // Firebase responded!
-
-            if (user && user.email === ADMIN_EMAIL) {
-                // ✅ LOGGED IN AS ADMIN
-                overlay.style.display = 'none';
-                document.getElementById('dashboard').classList.remove('hidden');
-                loadOrders();
-            } else {
-                // ❌ LOGGED OUT OR WRONG USER
-                loadingState.style.display = 'none';
-                deniedState.classList.remove('hidden');
-            }
-        });
-
-        document.getElementById('logout-btn').addEventListener('click', () => {
-             signOut(auth).then(() => window.location.href='index.html');
-        });
-
-        // 3. ADMIN FUNCTIONS
+        // 2. ADMIN FUNCTIONS
         window.showTab = (tabName) => {
             document.getElementById('tab-orders').style.display = tabName === 'orders' ? 'block' : 'none';
             document.getElementById('tab-products').style.display = tabName === 'products' ? 'block' : 'none';
@@ -136,18 +75,25 @@
                     createdAt: new Date()
                 });
                 alert("Product Added!");
-            } catch(e) { alert(e.message); }
+            } catch(e) { alert("Error: " + e.message); }
         };
 
         function loadOrders() {
+            // Simple query, no auth requirements
             const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+            
             onSnapshot(q, (snap) => {
                 const list = document.getElementById('admin-orders-list');
                 list.innerHTML = "";
-                if(snap.empty) { list.innerHTML = "No orders found."; return; }
+                if(snap.empty) { list.innerHTML = "<p class='text-gray-500'>No orders found.</p>"; return; }
 
                 snap.forEach(d => {
                     const o = d.data();
+                    // Safe Check for values
+                    const partner = o.deliveryPartner || "Pending";
+                    const track = o.trackingId || "Pending";
+                    const pay = o.paymentMethod || "COD";
+
                     list.innerHTML += `
                     <div class="bg-[#151515] p-4 rounded border border-gray-800 mb-4">
                         <div class="flex justify-between mb-2">
@@ -156,19 +102,26 @@
                         </div>
                         <p class="text-sm text-gray-400">User ID: ${o.userId}</p>
                         <p class="text-sm text-gray-400 mb-2">Address: ${o.address}</p>
-                        <p class="text-sm text-gray-400 mb-2">Total: $${o.total} | Pay: ${o.paymentMethod}</p>
+                        <p class="text-sm text-gray-400 mb-2">Details: $${o.total} | ${pay}</p>
                         
+                        ${(o.status === 'Shipped' || o.status === 'Delivered') ? 
+                            `<div class='mb-2 text-xs bg-gray-900 p-2 rounded'>🚚 ${partner} | ID: ${track}</div>` : ''}
+
                         <div class="flex gap-2 mt-3 flex-wrap">
-                            <button onclick="updateStatus('${d.id}', 'Confirmed')" class="px-3 py-1 bg-green-900 text-green-200 text-xs rounded">Confirm</button>
-                            <button onclick="openShipModal('${d.id}')" class="px-3 py-1 bg-blue-900 text-blue-200 text-xs rounded">Mark Shipped</button>
-                            <button onclick="updateStatus('${d.id}', 'Delivered')" class="px-3 py-1 bg-gray-700 text-white text-xs rounded">Delivered</button>
-                            <button onclick="cancelOrder('${d.id}')" class="px-3 py-1 bg-red-900 text-red-200 text-xs rounded">Cancel</button>
+                            <button onclick="updateStatus('${d.id}', 'Confirmed')" class="px-3 py-1 bg-green-900 text-green-200 text-xs rounded border border-green-800">Confirm</button>
+                            <button onclick="openShipModal('${d.id}')" class="px-3 py-1 bg-blue-900 text-blue-200 text-xs rounded border border-blue-800">Mark Shipped</button>
+                            <button onclick="updateStatus('${d.id}', 'Delivered')" class="px-3 py-1 bg-gray-700 text-white text-xs rounded border border-gray-600">Delivered</button>
+                            <button onclick="cancelOrder('${d.id}')" class="px-3 py-1 bg-red-900 text-red-200 text-xs rounded border border-red-800">Cancel</button>
                         </div>
                     </div>`;
                 });
+            }, (error) => {
+                // If it fails, show why
+                list.innerHTML = `<p class="text-red-500">Error loading data: ${error.message}<br>Make sure Firebase Rules are set to 'allow read, write: if true;'</p>`;
             });
         }
 
+        // Global Action Functions
         window.updateStatus = async (id, status) => {
             await updateDoc(doc(db, "orders", id), { status: status });
         };
