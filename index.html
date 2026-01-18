@@ -22,16 +22,7 @@
 
     <div id="navbar"></div>
 
-    <div class="max-w-screen-xl mx-auto px-4 pt-4 mt-2">
-        <div class="relative group">
-            <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                <svg class="w-5 h-5 text-gray-500 group-focus-within:text-red-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            </div>
-            <input type="text" id="search-input" class="block w-full p-4 pl-12 text-sm text-white border border-gray-800 rounded-full bg-[#111] focus:border-red-600 focus:ring-1 focus:ring-red-600 focus:outline-none transition shadow-lg placeholder-gray-500" placeholder="Search for drones, parts..." required>
-        </div>
-    </div>
-
-    <div class="relative w-full overflow-hidden mt-6" id="home-slider">
+    <div class="relative w-full overflow-hidden mt-2" id="home-slider">
         <div id="slider-track" class="flex transition-transform duration-500 ease-out h-[50vh] md:h-[600px]">
             </div>
         <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-2" id="slider-dots"></div>
@@ -52,11 +43,12 @@
     <script type="module">
         import { db, loadNavbar, collection, getDocs, formatINR } from './firebase-config.js';
 
+        // 1. Load Navbar (Now Includes Search Bar)
         loadNavbar();
 
         let allProducts = [];
 
-        // 1. Load Slider (FIXED: object-contain)
+        // 2. Load Slider
         const sliderTrack = document.getElementById('slider-track');
         getDocs(collection(db, "slider")).then(snap => {
             if(snap.empty) {
@@ -69,7 +61,6 @@
                 slides += `
                 <div class="w-full flex-shrink-0 relative cursor-pointer bg-black" onclick="window.location.href='${data.link || '#'}'">
                     <img src="${data.image}" class="w-full h-full object-contain">
-                    
                     <div class="absolute bottom-0 bg-gradient-to-t from-black via-black/50 to-transparent w-full p-8 pointer-events-none">
                         <h2 class="text-2xl font-bold text-white drop-shadow-lg">${data.title || ''}</h2>
                     </div>
@@ -87,10 +78,12 @@
             }
         });
 
-        // 2. Load Products & Search Logic
+        // 3. Load Products & Initialize Search Logic
         const grid = document.getElementById('product-grid');
-        const searchInput = document.getElementById('search-input');
         const resultCount = document.getElementById('result-count');
+        
+        // Grab search input FROM NAVBAR (it exists because loadNavbar ran above)
+        const searchInput = document.getElementById('search-input');
 
         async function initProducts() {
             const snap = await getDocs(collection(db, "products"));
@@ -140,24 +133,26 @@
             });
         }
 
-        searchInput.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase().trim();
-            const filtered = allProducts.filter(p => {
-                const pName = p.name ? p.name.toLowerCase() : "";
-                const pDesc = p.desc ? p.desc.toLowerCase() : "";
-                return pName.includes(term) || pDesc.includes(term);
+        // Attach Event Listener if search bar exists (it should)
+        if(searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase().trim();
+                const filtered = allProducts.filter(p => {
+                    const pName = p.name ? p.name.toLowerCase() : "";
+                    const pDesc = p.desc ? p.desc.toLowerCase() : "";
+                    return pName.includes(term) || pDesc.includes(term);
+                });
+                renderProducts(filtered);
+                if(term.length > 0) {
+                    resultCount.classList.remove('hidden');
+                    resultCount.innerText = `Found ${filtered.length} result(s)`;
+                } else {
+                    resultCount.classList.add('hidden');
+                }
             });
-            renderProducts(filtered);
-            if(term.length > 0) {
-                resultCount.classList.remove('hidden');
-                resultCount.innerText = `Found ${filtered.length} result(s)`;
-            } else {
-                resultCount.classList.add('hidden');
-            }
-        });
+        }
 
         initProducts();
-
     </script>
 </body>
 </html>
