@@ -10,16 +10,30 @@
 <body class="p-4">
 
     <div id="access-check" class="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6 text-center">
-        <h2 class="text-2xl font-bold text-white mb-2">Verifying Privileges...</h2>
-        <p id="access-msg" class="text-gray-500 mb-6">Checking Firebase Session...</p>
         
-        <div id="denied-box" class="hidden">
+        <div id="loading-state">
+            <h2 class="text-2xl font-bold text-white mb-2 animate-pulse">Verifying Access...</h2>
+            <p class="text-gray-500">Checking your session...</p>
+        </div>
+
+        <div id="denied-state" class="hidden">
             <div class="text-red-500 text-6xl mb-4">⛔</div>
             <h3 class="text-xl text-white font-bold mb-2">Access Denied</h3>
-            <p class="text-gray-400 mb-6 max-w-xs mx-auto">You are not logged in as an Administrator.</p>
-            <button onclick="window.location.href='index.html'" class="bg-white text-black font-bold px-6 py-3 rounded-full hover:bg-gray-200 transition">Go Back Home</button>
-            <p class="mt-4 text-xs text-gray-600">Tip: Log in via the Main Menu first.</p>
+            <p class="text-gray-400 mb-6 max-w-xs mx-auto">You are not logged in as Admin.</p>
+            
+            <div class="bg-[#111] p-4 rounded border border-gray-800 mb-6">
+                <p class="text-sm text-yellow-500 font-bold mb-2">HOW TO FIX:</p>
+                <ol class="text-left text-sm text-gray-400 space-y-2 list-decimal pl-4">
+                    <li>Go to the <b class="text-white">Home Page</b>.</li>
+                    <li>Click the <b>Menu Button</b> -> <b>Login</b>.</li>
+                    <li>Login with: <b class="text-white">admin@kd.com</b></li>
+                    <li>Come back here.</li>
+                </ol>
+            </div>
+
+            <button onclick="window.location.href='index.html'" class="w-full bg-white text-black font-bold py-3 rounded hover:bg-gray-200 transition">GO TO HOME PAGE</button>
         </div>
+
     </div>
 
     <div id="dashboard" class="hidden max-w-4xl mx-auto">
@@ -70,21 +84,34 @@
 
         const ADMIN_EMAIL = "admin@kd.com"; 
 
-        // 1. STRICT AUTH CHECK (No Passwords)
+        // 1. TIMEOUT FAILSAFE (Prevents being stuck on "Checking...")
+        const loadingState = document.getElementById('loading-state');
+        const deniedState = document.getElementById('denied-state');
         const overlay = document.getElementById('access-check');
-        const deniedBox = document.getElementById('denied-box');
-        const accessMsg = document.getElementById('access-msg');
+        
+        let isVerified = false;
 
+        // Force "Access Denied" if Firebase doesn't respond in 4 seconds
+        setTimeout(() => {
+            if (!isVerified) {
+                loadingState.style.display = 'none';
+                deniedState.classList.remove('hidden');
+            }
+        }, 4000);
+
+        // 2. AUTH CHECK
         onAuthStateChanged(auth, (user) => {
+            isVerified = true; // Firebase responded!
+
             if (user && user.email === ADMIN_EMAIL) {
-                // ✅ USER IS ADMIN -> ACCESS GRANTED
+                // ✅ LOGGED IN AS ADMIN
                 overlay.style.display = 'none';
                 document.getElementById('dashboard').classList.remove('hidden');
                 loadOrders();
             } else {
-                // ❌ NOT ADMIN or NOT LOGGED IN -> ACCESS DENIED
-                accessMsg.style.display = 'none';
-                deniedBox.classList.remove('hidden');
+                // ❌ LOGGED OUT OR WRONG USER
+                loadingState.style.display = 'none';
+                deniedState.classList.remove('hidden');
             }
         });
 
@@ -92,7 +119,7 @@
              signOut(auth).then(() => window.location.href='index.html');
         });
 
-        // 2. ADMIN FUNCTIONS (Same as before)
+        // 3. ADMIN FUNCTIONS
         window.showTab = (tabName) => {
             document.getElementById('tab-orders').style.display = tabName === 'orders' ? 'block' : 'none';
             document.getElementById('tab-products').style.display = tabName === 'products' ? 'block' : 'none';
