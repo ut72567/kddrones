@@ -17,27 +17,60 @@
             </div>
         </div>
 
-        <div class="flex gap-4 mb-6">
-            <button onclick="showTab('orders')" class="px-4 py-2 bg-gray-800 rounded text-white hover:bg-gray-700">Orders</button>
-            <button onclick="showTab('products')" class="px-4 py-2 bg-gray-800 rounded text-white hover:bg-gray-700">Products</button>
+        <div class="flex gap-2 mb-6 overflow-x-auto">
+            <button onclick="showTab('orders')" class="px-4 py-2 bg-gray-800 rounded text-white hover:bg-gray-700 whitespace-nowrap">📦 Orders</button>
+            <button onclick="showTab('products')" class="px-4 py-2 bg-gray-800 rounded text-white hover:bg-gray-700 whitespace-nowrap">🚁 Products</button>
+            <button onclick="showTab('slider')" class="px-4 py-2 bg-gray-800 rounded text-white hover:bg-gray-700 whitespace-nowrap">🖼️ Slider</button>
+            <button onclick="showTab('settings')" class="px-4 py-2 bg-gray-800 rounded text-white hover:bg-gray-700 whitespace-nowrap">⚙️ Settings</button>
         </div>
 
         <div id="tab-orders" class="block">
             <h2 class="text-2xl font-bold text-white mb-4">Manage Orders</h2>
-            <div id="admin-orders-list" class="space-y-4">
-                <p class="animate-pulse">Loading orders...</p>
-            </div>
+            <div id="admin-orders-list" class="space-y-4">Loading...</div>
         </div>
 
         <div id="tab-products" class="hidden">
             <div class="mb-8 bg-[#111] p-4 rounded border border-gray-800">
-                <h3 class="text-white font-bold mb-4">Add New Product</h3>
+                <h3 class="text-white font-bold mb-4">Add / Edit Product</h3>
+                
                 <input id="p-name" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Product Name">
-                <input id="p-price" type="number" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Price">
-                <input id="p-image" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Image URL">
+                <input id="p-price" type="number" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Price (₹)">
                 <textarea id="p-desc" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Description"></textarea>
-                <textarea id="p-specs" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Specs"></textarea>
-                <button onclick="addProduct()" class="w-full bg-green-600 text-white font-bold p-3 rounded">ADD PRODUCT</button>
+                <textarea id="p-specs" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Specifications"></textarea>
+                
+                <div class="mb-2 p-2 border border-gray-800 rounded">
+                    <label class="text-xs text-gray-500 mb-2 block">Product Images (Enter URLs)</label>
+                    <div id="image-inputs-container" class="space-y-2">
+                        <input class="w-full bg-black border border-gray-700 p-2 rounded p-img-input" placeholder="Main Image URL">
+                    </div>
+                    <button onclick="addImgInput()" class="text-xs text-blue-500 mt-2 font-bold">+ Add Another Image URL</button>
+                </div>
+
+                <button onclick="saveProduct()" class="w-full bg-green-600 text-white font-bold p-3 rounded mt-2">SAVE PRODUCT</button>
+            </div>
+            
+            <h3 class="text-white font-bold mb-2">Existing Products</h3>
+            <div id="product-list" class="space-y-2">Loading...</div>
+        </div>
+
+        <div id="tab-slider" class="hidden">
+            <div class="mb-8 bg-[#111] p-4 rounded border border-gray-800">
+                <h3 class="text-white font-bold mb-4">Add New Slide</h3>
+                <input id="s-image" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Slider Image URL">
+                <input id="s-link" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Target Link (e.g. products/mavic)">
+                <input id="s-title" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Title (Optional)">
+                <button onclick="addSlide()" class="w-full bg-blue-600 text-white font-bold p-3 rounded">ADD SLIDE</button>
+            </div>
+            <h3 class="text-white font-bold mb-2">Current Slides</h3>
+            <div id="slider-list" class="grid grid-cols-1 gap-4"></div>
+        </div>
+
+        <div id="tab-settings" class="hidden">
+            <div class="bg-[#111] p-4 rounded border border-gray-800">
+                <h3 class="text-white font-bold mb-4">Website Logo</h3>
+                <p class="text-xs text-gray-500 mb-2">Enter direct URL of your logo image.</p>
+                <input id="logo-url" class="w-full bg-black border border-gray-700 p-2 mb-2 rounded" placeholder="Logo Image URL">
+                <button onclick="updateLogo()" class="bg-white text-black font-bold px-4 py-2 rounded">Update Logo</button>
             </div>
         </div>
     </div>
@@ -45,7 +78,7 @@
     <div id="ship-modal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-[#111] p-6 rounded-xl border border-gray-800 w-full max-w-sm">
             <h3 class="text-xl font-bold text-white mb-4">Ship Order</h3>
-            <input id="ship-partner" class="w-full bg-black border border-gray-700 p-2 mb-3 rounded text-white" placeholder="Delivery Partner">
+            <input id="ship-partner" class="w-full bg-black border border-gray-700 p-2 mb-3 rounded text-white" placeholder="Delivery Partner (e.g., BlueDart)">
             <input id="ship-track" class="w-full bg-black border border-gray-700 p-2 mb-4 rounded text-white" placeholder="Tracking ID">
             <button id="confirm-ship-btn" class="w-full bg-blue-600 text-white font-bold py-2 rounded">CONFIRM SHIPMENT</button>
             <button onclick="document.getElementById('ship-modal').classList.add('hidden')" class="w-full mt-2 text-gray-500 py-2">Cancel</button>
@@ -53,75 +86,101 @@
     </div>
 
     <script type="module">
-        import { db, doc, updateDoc, addDoc, collection, query, orderBy, onSnapshot } from './firebase-config.js';
+        import { db, doc, updateDoc, addDoc, deleteDoc, setDoc, collection, query, orderBy, onSnapshot, formatINR } from './firebase-config.js';
 
-        // 1. DIRECT LOAD - NO AUTH CHECK
-        loadOrders(); 
-
-        // 2. ADMIN FUNCTIONS
+        // --- TABS LOGIC ---
         window.showTab = (tabName) => {
-            document.getElementById('tab-orders').style.display = tabName === 'orders' ? 'block' : 'none';
-            document.getElementById('tab-products').style.display = tabName === 'products' ? 'block' : 'none';
+            ['orders', 'products', 'slider', 'settings'].forEach(t => {
+                document.getElementById('tab-'+t).style.display = (t === tabName) ? 'block' : 'none';
+            });
+        };
+        // Load default data
+        loadOrders();
+        loadSlides();
+        loadProducts();
+
+        // --- 1. PRODUCT MANAGEMENT (MULTI IMAGE URL) ---
+        window.addImgInput = () => {
+            const container = document.getElementById('image-inputs-container');
+            container.innerHTML += `<input class="w-full bg-black border border-gray-700 p-2 rounded p-img-input mt-2" placeholder="Next Image URL">`;
         };
 
-        window.addProduct = async () => {
+        window.saveProduct = async () => {
+            // Collect all image inputs
+            const inputs = document.querySelectorAll('.p-img-input');
+            const imgArray = [];
+            inputs.forEach(inp => {
+                if(inp.value.trim() !== "") imgArray.push(inp.value.trim());
+            });
+
+            if(imgArray.length === 0) return alert("Please add at least 1 image URL");
+
             try {
                 await addDoc(collection(db, "products"), {
                     name: document.getElementById('p-name').value,
                     price: Number(document.getElementById('p-price').value),
-                    image: document.getElementById('p-image').value,
                     desc: document.getElementById('p-desc').value,
                     specs: document.getElementById('p-specs').value,
+                    images: imgArray, // Save Array of URLs
+                    image: imgArray[0], // Main Image
                     createdAt: new Date()
                 });
-                alert("Product Added!");
-            } catch(e) { alert("Error: " + e.message); }
+                alert("Product Saved!");
+                location.reload(); // Reload to refresh list
+            } catch(e) { alert(e.message); }
         };
 
+        function loadProducts() {
+            onSnapshot(collection(db, "products"), (snap) => {
+                const list = document.getElementById('product-list');
+                list.innerHTML = "";
+                snap.forEach(d => {
+                    list.innerHTML += `
+                    <div class="flex justify-between bg-[#151515] p-2 rounded border border-gray-800">
+                        <span>${d.data().name}</span>
+                        <button onclick="deleteProduct('${d.id}')" class="text-red-500 text-sm">Delete</button>
+                    </div>`;
+                });
+            });
+        }
+        window.deleteProduct = async(id) => {
+            if(confirm("Delete product?")) await deleteDoc(doc(db, "products", id));
+        }
+
+        // --- 2. ORDER MANAGEMENT ---
         function loadOrders() {
-            // Simple query, no auth requirements
             const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
-            
             onSnapshot(q, (snap) => {
                 const list = document.getElementById('admin-orders-list');
                 list.innerHTML = "";
-                if(snap.empty) { list.innerHTML = "<p class='text-gray-500'>No orders found.</p>"; return; }
+                if(snap.empty) { list.innerHTML = "<p>No orders found.</p>"; return; }
 
                 snap.forEach(d => {
                     const o = d.data();
-                    // Safe Check for values
-                    const partner = o.deliveryPartner || "Pending";
-                    const track = o.trackingId || "Pending";
-                    const pay = o.paymentMethod || "COD";
-
                     list.innerHTML += `
                     <div class="bg-[#151515] p-4 rounded border border-gray-800 mb-4">
                         <div class="flex justify-between mb-2">
                             <span class="font-bold text-white">Order #${d.id.slice(0,6)}</span>
                             <span class="text-${o.status === 'Cancelled' ? 'red' : 'green'}-500 font-bold text-sm uppercase">${o.status}</span>
                         </div>
-                        <p class="text-sm text-gray-400">User ID: ${o.userId}</p>
-                        <p class="text-sm text-gray-400 mb-2">Address: ${o.address}</p>
-                        <p class="text-sm text-gray-400 mb-2">Details: $${o.total} | ${pay}</p>
+                        <p class="text-sm text-gray-400">User: ${o.userId}</p>
+                        <p class="text-sm text-gray-300 font-mono bg-black p-2 rounded my-2 border border-gray-800">${o.address}</p>
+                        <p class="text-sm text-gray-400 mb-2">Total: ${formatINR(o.total)} | Type: ${o.paymentMethod}</p>
                         
                         ${(o.status === 'Shipped' || o.status === 'Delivered') ? 
-                            `<div class='mb-2 text-xs bg-gray-900 p-2 rounded'>🚚 ${partner} | ID: ${track}</div>` : ''}
+                            `<div class='mb-2 text-xs bg-gray-900 p-2 rounded text-blue-300'>🚚 ${o.deliveryPartner} | ID: ${o.trackingId}</div>` : ''}
 
                         <div class="flex gap-2 mt-3 flex-wrap">
-                            <button onclick="updateStatus('${d.id}', 'Confirmed')" class="px-3 py-1 bg-green-900 text-green-200 text-xs rounded border border-green-800">Confirm</button>
-                            <button onclick="openShipModal('${d.id}')" class="px-3 py-1 bg-blue-900 text-blue-200 text-xs rounded border border-blue-800">Mark Shipped</button>
-                            <button onclick="updateStatus('${d.id}', 'Delivered')" class="px-3 py-1 bg-gray-700 text-white text-xs rounded border border-gray-600">Delivered</button>
-                            <button onclick="cancelOrder('${d.id}')" class="px-3 py-1 bg-red-900 text-red-200 text-xs rounded border border-red-800">Cancel</button>
+                            <button onclick="updateStatus('${d.id}', 'Confirmed')" class="px-3 py-1 bg-green-900 text-green-200 text-xs rounded">Confirm</button>
+                            <button onclick="openShipModal('${d.id}')" class="px-3 py-1 bg-blue-900 text-blue-200 text-xs rounded">Mark Shipped</button>
+                            <button onclick="updateStatus('${d.id}', 'Delivered')" class="px-3 py-1 bg-gray-700 text-white text-xs rounded">Delivered</button>
+                            <button onclick="cancelOrder('${d.id}')" class="px-3 py-1 bg-red-900 text-red-200 text-xs rounded">Cancel</button>
                         </div>
                     </div>`;
                 });
-            }, (error) => {
-                // If it fails, show why
-                list.innerHTML = `<p class="text-red-500">Error loading data: ${error.message}<br>Make sure Firebase Rules are set to 'allow read, write: if true;'</p>`;
             });
         }
 
-        // Global Action Functions
         window.updateStatus = async (id, status) => {
             await updateDoc(doc(db, "orders", id), { status: status });
         };
@@ -142,20 +201,56 @@
                     trackingId: track
                 });
                 document.getElementById('ship-modal').classList.add('hidden');
-            } else {
-                alert("Please fill all details");
-            }
+            } else { alert("Please enter details"); }
         });
 
         window.cancelOrder = async (id) => {
             if(confirm("Cancel this order?")) {
                 await updateDoc(doc(db, "orders", id), { 
                     status: "Cancelled",
-                    deliveryPartner: "", 
-                    trackingId: "" 
+                    deliveryPartner: "", trackingId: "" 
                 });
             }
         };
+
+        // --- 3. SLIDER MANAGEMENT (URL BASED) ---
+        function loadSlides() {
+            onSnapshot(collection(db, "slider"), (snap) => {
+                const list = document.getElementById('slider-list');
+                list.innerHTML = "";
+                snap.forEach(d => {
+                    const s = d.data();
+                    list.innerHTML += `
+                    <div class="relative group">
+                        <img src="${s.image}" class="w-full h-32 object-cover rounded border border-gray-700">
+                        <button onclick="deleteSlide('${d.id}')" class="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded">Delete</button>
+                        <p class="text-xs text-gray-500 mt-1 truncate">Link: ${s.link}</p>
+                    </div>`;
+                });
+            });
+        }
+
+        window.addSlide = async () => {
+            await addDoc(collection(db, "slider"), {
+                image: document.getElementById('s-image').value,
+                link: document.getElementById('s-link').value,
+                title: document.getElementById('s-title').value
+            });
+            alert("Slide Added");
+        };
+
+        window.deleteSlide = async (id) => {
+            if(confirm("Delete this slide?")) await deleteDoc(doc(db, "slider", id));
+        };
+
+        // --- 4. LOGO MANAGEMENT (URL ONLY) ---
+        window.updateLogo = async () => {
+            const url = document.getElementById('logo-url').value;
+            if(!url) return alert("Please enter a URL");
+            await setDoc(doc(db, "settings", "general"), { logo: url }, { merge: true });
+            alert("Logo Updated Globally!");
+        };
+
     </script>
 </body>
 </html>
