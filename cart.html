@@ -22,45 +22,114 @@
     </div>
 
     <script type="module">
-        import { db, auth, loadNavbar, collection, onSnapshot, doc, deleteDoc } from './firebase-config.js';
-        
-        loadNavbar();
+    import { db, auth, loadNavbar, collection, onSnapshot, doc, deleteDoc, addDoc, serverTimestamp, getDocs } from './firebase-config.js';
+    
+    loadNavbar();
 
-        auth.onAuthStateChanged(user => {
-            if(user) {
-                onSnapshot(collection(db, "carts", user.uid, "items"), (snap) => {
-                    const container = document.getElementById('cart-items');
-                    let total = 0;
-                    container.innerHTML = "";
-                    
-                    if(snap.empty) {
-                        container.innerHTML = "<p>Cart is empty.</p>";
-                    }
+    // 1. Load Cart Logic (Same as before)
+    auth.onAuthStateChanged(user => {
+        if(user) {
+            onSnapshot(collection(db, "carts", user.uid, "items"), (snap) => {
+                const container = document.getElementById('cart-items');
+                let total = 0;
+                container.innerHTML = "";
+                
+                if(snap.empty) {
+                    container.innerHTML = "<p class='text-gray-500'>Cart is empty.</p>";
+                    // Remove Checkout Button if empty
+                    const checkoutBtn = document.querySelector('button.w-full');
+                    if(checkoutBtn) checkoutBtn.style.display = 'none';
+                } else {
+                    // Show Checkout Button
+                    const checkoutBtn = document.querySelector('button.w-full');
+                    if(checkoutBtn) checkoutBtn.style.display = 'block';
+                }
 
-                    snap.forEach(d => {
-                        const item = d.data();
-                        total += item.price;
-                        container.innerHTML += `
-                        <div class="flex items-center justify-between bg-[#111] p-4 rounded-lg border border-gray-800">
-                            <div class="flex items-center gap-4">
-                                <img src="${item.image}" class="w-16 h-16 object-cover rounded">
-                                <div>
-                                    <h3 class="font-bold">${item.name}</h3>
-                                    <p class="text-gray-400">$${item.price}</p>
-                                </div>
+                snap.forEach(d => {
+                    const item = d.data();
+                    total += item.price;
+                    container.innerHTML += `
+                    <div class="flex items-center justify-between bg-[#111] p-4 rounded-lg border border-gray-800">
+                        <div class="flex items-center gap-4">
+                            <img src="${item.image}" class="w-16 h-16 object-cover rounded">
+                            <div>
+                                <h3 class="font-bold">${item.name}</h3>
+                                <p class="text-gray-400">$${item.price}</p>
                             </div>
-                            <button onclick="removeItem('${d.id}')" class="text-red-500 text-sm">Remove</button>
-                        </div>`;
-                    });
-                    document.getElementById('total-price').innerText = "$" + total;
+                        </div>
+                        <button onclick="removeItem('${d.id}')" class="text-red-500 text-sm">Remove</button>
+                    </div>`;
                 });
-            }
+                document.getElementById('total-price').innerText = "$" + total;
+            });
+        }
+    });
+
+    window.removeItem = async (id) => {
+        const user = auth.currentUser;
+        if(user) await deleteDoc(doc(db, "carts", user.uid, "items", id));
+    };
+
+    // 2. CHECKOUT LOGIC
+    // Find the checkout button and add event listener
+    document.querySelector('button.w-full').addEventListener('click', async () => {
+        const user = auth.currentUser;
+        if(!user || user.isAnonymous) {
+            alert("Please Login to place an order.");
+            document.getElementById('auth-modal').classList.remove('hidden');
+            return;
+        }
+
+        // Simple Prompt for Address (Keep it simple for Acode)
+        const address = prompt("Enter your Delivery Address:");
+        if(!address) return;
+
+        // PAYMENT SELECTION
+        // We simulate a selection process here using browser confirm/alert flow
+        // or a simple check. Since prompt asked for design "Force COD", we do this:
+        
+        if (confirm("Choose Payment Method:\nPress OK for Cash on Delivery (COD)\nPress Cancel for Online Payment")) {
+             // User selected COD -> Proceed
+             placeOrder(user, address);
+        } else {
+             // User selected Online -> Show Error
+             alert("We are currently not accepting online payments. Please select Cash on Delivery (COD) to place your order.");
+             // Re-trigger the choice
+             document.querySelector('button.w-full').click();
+        }
+    });
+
+    async function placeOrder(user, address) {
+        // Get Cart Items
+        const cartSnap = await getDocs(collection(db, "carts", user.uid, "items"));
+        if(cartSnap.empty) return;
+
+        let items = [];
+        let total = 0;
+        cartSnap.forEach(doc => {
+            items.push(doc.data());
+            total += doc.data().price;
         });
 
-        window.removeItem = async (id) => {
-            const user = auth.currentUser;
-            if(user) await deleteDoc(doc(db, "carts", user.uid, "items", id));
-        };
-    </script>
+        // Create Order
+        await addDoc(collection(db, "orders"), {
+            userId: user.uid,
+            items: items,
+            total: total,
+            address: address,
+            status: "Confirmed", // Default status
+            paymentMethod: "COD",
+            timestamp: serverTimestamp()
+        });
+
+        // Clear Cart
+        cartSnap.forEach(async (d) => {
+            await deleteDoc(doc(db, "carts", user.uid, "items", d.id));
+        });
+
+        alert("Order Placed Successfully!");
+        window.location.href = "orders.html";
+    }
+</script>
 </body>
 </html>
